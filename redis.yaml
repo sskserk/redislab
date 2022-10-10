@@ -1,0 +1,110 @@
+
+- name: Init nodes
+  hosts: all
+  serial: 3
+  tasks:
+  - name: Init apt update & install packages
+    become: true
+    become_user: root
+    shell: apt update -y
+
+  - name: Create installation directory
+    file:
+      path: "{{ install_directory }}"
+      state: directory
+
+  - name: Copy/scp GPG key file
+    copy:
+      src: "{{ redis_gpg_key_file }}"
+      dest: "{{ install_directory }}"
+
+  - name: Import GPG key file
+    shell: cd "{{ install_directory}}" && gpg --import "{{ redis_gpg_key_file }}"
+
+  - name: Copy/scp installation file
+    copy:
+      src: "{{ install_file }}"
+      dest: "{{ install_directory }}"
+
+  - name: Untar installation file
+    shell: cd "{{ install_directory }}" && tar -xvf "{{ install_file }}"
+
+  - name: Run install.sh
+    become: true
+    become_user: root
+    shell: cd "{{ install_directory }}" && ./install.sh -y
+
+- name: Init cluster on node0
+  hosts: node0
+  serial: 1
+  tasks:
+  - name: Create cluster
+    become: true
+    become_user: root
+    environment:
+      PATH: "/opt/redislabs/bin:{{ ansible_env.PATH }}"
+    shell: rladmin cluster create name "{{ redis_cluster_name }}" username "{{ redus_cluster_admin_username }}" password "{{ redus_cluster_admin_password }}"
+
+  - name: Check cluster status
+    become: true
+    become_user: root
+    environment:
+      PATH: "/opt/redislabs/bin:{{ ansible_env.PATH }}"
+    shell: rladmin status
+    register: node0_rladmin_status
+
+  - debug:
+      var: node0_rladmin_status.stdout_lines
+
+- name: Join node1 to the cluster
+  hosts: node1
+  tasks:
+  - name: Join node
+    become: true
+    become_user: root
+    environment:
+      PATH: "/opt/redislabs/bin:{{ ansible_env.PATH }}"
+    shell: rladmin cluster join addr "{{ node1_private_ip }}" username admin@rlabs.org password admin nodes "{{ node0_private_ip }}"
+
+  - name: Check status
+    become: true
+    become_user: root
+    environment:
+      PATH: "/opt/redislabs/bin:{{ ansible_env.PATH }}"
+    shell: rladmin status
+    register: node1_rladmin_status
+
+  - debug:
+      var: node1_rladmin_status.stdout_lines
+
+- name: Join node2 to the cluster
+  hosts: node2
+  tasks:
+  - name: Join node
+    become: true
+    become_user: root
+    environment:
+      PATH: "/opt/redislabs/bin:{{ ansible_env.PATH }}"
+    shell: rladmin cluster join addr "{{ node2_private_ip }}" username admin@rlabs.org password admin nodes "{{ node0_private_ip }}"
+
+  - name: Check status
+    become: true
+    become_user: root
+    environment:
+      PATH: "/opt/redislabs/bin:{{ ansible_env.PATH }}"
+    shell: rladmin status
+    register: node2_rladmin_status
+
+  - debug:
+      var: node2_rladmin_status.stdout_lines
+
+- name: Create clustered database
+  hosts: node0
+  tasks:
+  - name: Create database
+    shell: curl -v -k -u "{{ redus_cluster_admin_username }}:{{ redus_cluster_admin_password }}" -H "Content-Type:application/json" -d '{"name":"training-db","memory_size":134217728,"port":12000,"replication":true,"slave_ha":true,"shards_count":2,"sharding":true,"shard_key_regex":[{"regex":".*\\{(?<tag>.*)\\}.*"},{"regex":"(?<tag>.*)"}]}' -X POST https://127.0.0.1:9443/v1/bdbs
+#    shell: curl -v -k -u "{{ redus_cluster_admin_username }}:{{ redus_cluster_admin_password }}" -H "Content-Type:application/json" -d '{"name":"training-db","memory_size":134217728,"port":12000}' -X POST https://127.0.0.1:9443/v1/bdbs
+    register: create_db_status
+
+  - debug:
+      var: create_db_status.stdout_lines

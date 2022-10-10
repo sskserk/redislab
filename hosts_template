@@ -1,0 +1,14 @@
+[nodes:vars]
+ansible_ssh_user=ubuntu
+ansible_ssh_private_key_file=./id_rsa
+
+install_directory=./install
+redis_gpg_key_file=GPG-KEY-redislabs-packages.gpg
+
+# specific user parameters
+redis_cluster_name = local.rlabs.local
+redus_cluster_admin_username = admin@rlabs.org
+redus_cluster_admin_password = admin
+
+# local path to the installation tarbal
+install_file=redislabs-6.2.18-49-bionic-amd64.tar

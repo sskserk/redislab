@@ -1,7 +1,5 @@
 ## Redis Cluster Installation artifact
  <strong>Disclaimer 1: it is not a production ready solution.</strong><br/>
- <strong>Disclaimer 2: artifact contains SSH keys (is_rsa & id_rsa.pub).</strong>
-
 
  <img src="./rladmin_result.png"/>
  <br/>
@@ -38,7 +36,7 @@
 5) Solve issues which should not happen :))
 
 6) Access any server using SSH.
-   Open the ./hosts file. It contains public DNS names of the configured EC2 instances. SSH connection can be established using SSH key (id_rsa) stored in the current directory. Use the "ubuntu" user (e.g.):
+   Open the ./hosts file. It contains public DNS names of the configured EC2 instances. SSH connection can be established using generated SSH key (id_rsa) stored in the current directory. Use the "ubuntu" user (e.g.):
    ```bash
    $ ssh -i id_rsa ubuntu@c2-3-140-188-58.us-east-2.compute.amazonaws.com
    ```
